@@ -12,12 +12,24 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [
-      {
-        "command": "data-massage.helloWorld",
-        "title": "Hello World"
-      }
-    ]
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "data-massage",
+          "title": "Data Massage",
+          "icon": "refsources/data-massage.svg"
+        }
+      ]
+    },
+    "views": {
+      "data-massage": [
+        {
+          "type": "webview",
+          "id": "data-massage",
+          "name": "Data Massage"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
