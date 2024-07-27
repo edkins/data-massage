@@ -6,3 +6,4 @@ node_modules
 __pycache__/
 /python/env/
 python/.venv/
+python/framework.ipynb
