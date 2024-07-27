@@ -17,7 +17,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('data-massage.extend', () => {
-			const pythonScriptPath = vscode.Uri.joinPath(context.extensionUri, 'python', 'example.py');
+			const pythonScriptPath = vscode.Uri.joinPath(context.extensionUri, 'python', 'example_venv.py');
 
 			const editor = vscode.window.activeTextEditor;
 			if (editor !== undefined) {
