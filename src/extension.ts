@@ -120,14 +120,110 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 			<html lang="en">
 			<head>
 				<meta charset="UTF-8">
+				<style>
+				body.vscode-dark button {
+					background-color: #333;
+					color: white;
+				}
+				body.vscode-dark input {
+					background-color: #333;
+					color: white;
+				}
+				body.vscode-dark textarea {
+					background-color: #333;
+					color: white;
+				}
+
+				div#panel_outer {
+					display: flex;
+				}
+				div#panel_left {
+					width: 100px;
+				}
+				div#panel_main {
+					flex-grow: 1;
+					padding-left: 5px;
+				}
+
+				div.option {
+					padding: 10px;
+					cursor: default;
+				}
+				div.option.active {
+					background-color: #888;
+					color: white;
+				}
+
+				textarea {
+					width: 100%;
+				}
+				</style>
 			</head>
 			<body>
-			hello
-			<button id="extend">Extend</button>
+			<div id="panel_outer">
+			<div id="panel_left">
+				<div id="visit_grow_shrink" class="option active">Grow/shrink</div>
+				<div id="visit_edit" class="option">Edit</div>
+				<div id="visit_eval" class="option">Eval</div>
+			</div>
+			<div id="panel_main">
+				<div id="grow_shrink">
+					Current size: <span id="current_size">-</span>
+					<br>
+					<button id="extend">Extend by</button>
+					<input type="number" id="extend_amount" value="100">
+					<br>
+					<input type="text" id="extend_hint" placeholder="Hint">
+					<hr>
+					Dodgy records: <span id="dodgy_count">-</span>
+					<br>
+					<button id="delete_dodgy">Remove dodgy</button>
+					<hr>
+					Duplicates: <span id="duplicate_count">-</span>
+					<br>
+					<button id="delete_duplicates">Remove duplicates</button>
+				</div>
+				<div id="edit" style="display:none">
+					<textarea id="edit_hint"></textarea>
+					<br>
+					<button id="edit_button">Fix dodgy</button>
+					<button id="edit_button">Edit all records</button>
+				</div>
+				<div id="eval" style="display:none">
+					<textarea id="eval_hint"></textarea>
+					<br>
+					<button id="eval_button">Mark dodgy</button>
+				</div>
+			</div>
+			</div>
 			<script>
 				const vscode = acquireVsCodeApi();
 				document.getElementById('extend').addEventListener('click', () => {
 					vscode.postMessage({ command: 'extend' });
+				});
+				document.getElementById('visit_grow_shrink').addEventListener('click', () => {
+					document.getElementById('visit_grow_shrink').classList.add('active');
+					document.getElementById('visit_edit').classList.remove('active');
+					document.getElementById('visit_eval').classList.remove('active');
+					document.getElementById('grow_shrink').style.display = 'block';
+					document.getElementById('edit').style.display = 'none';
+					document.getElementById('eval').style.display = 'none';
+				});
+				document.getElementById('visit_edit').addEventListener('click', () => {
+					document.getElementById('visit_grow_shrink').classList.remove('active');
+					document.getElementById('visit_edit').classList.add('active');
+					document.getElementById('visit_eval').classList.remove('active');
+					document.getElementById('grow_shrink').style.display = 'none';
+					document.getElementById('edit').style.display = 'block';
+					document.getElementById('eval').style.display = 'none';
+				});
+				document.getElementById('visit_eval').addEventListener('click', () => {
+					document.getElementById('visit_grow_shrink').classList.remove('active');
+					document.getElementById('visit_edit').classList.remove('active');
+					document.getElementById('visit_eval').classList.add('active');
+					document.getElementById('grow_shrink').style.display = 'none';
+					document.getElementById('edit').style.display = 'none';
+					document.getElementById('eval').style.display = 'block';
 				});
 			</script>
 			</body>
