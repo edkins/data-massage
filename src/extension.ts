@@ -21,18 +21,64 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const editor = vscode.window.activeTextEditor;
 			if (editor !== undefined) {
+				const streamer = new Streamer(editor);
 				const process = execFile('python', [pythonScriptPath.fsPath]);
 
-				process.stdout?.on('data', (data) => {
-					editor?.edit((editBuilder) => {
-						editBuilder.insert(editor.selection.active, data.toString());
-					});
-				});
-
-				process.stdin?.write('hello', () => process.stdin?.end());
+				process.stdout?.on('data', (data) => streamer.write(data));
+				process.stdin?.write(editor.document.getText(), () => process.stdin?.end());
+				process.stderr?.on('data', (data) => console.error(data));
+				process.addListener('exit', (code) => streamer.end());
 			}
 		})
 	);
+}
+
+class Streamer {
+	private _line: number;
+	private _column: number;
+	constructor(private readonly _editor: vscode.TextEditor) {
+		this._editor = _editor;
+		this._line = 0;
+		this._column = 0;
+	}
+
+	write(data: string) {
+		const datalines = data.split('\n');
+		this._editor.edit((editBuilder) => {
+			for (let i = 0; i < datalines.length; i++) {
+				if (i !== 0) {
+					this._writeNewLine(editBuilder);
+				}
+				this._writeWithinLine(editBuilder, datalines[i]);
+			}
+		});
+	}
+
+	end() {
+		this._editor.edit((editBuilder) => {
+			editBuilder.delete(new vscode.Range(
+				new vscode.Position(this._line, this._column),
+				new vscode.Position(this._editor.document.lineCount, 0),
+			));
+		});
+	}
+
+	private _writeWithinLine(editBuilder: vscode.TextEditorEdit, data: string) {
+		editBuilder.replace(new vscode.Range(
+			new vscode.Position(this._line, this._column),
+			new vscode.Position(this._line, this._column + data.length),
+		), data);
+		this._column += data.length;
+	}
+
+	private _writeNewLine(editBuilder: vscode.TextEditorEdit) {
+		editBuilder.replace(new vscode.Range(
+			new vscode.Position(this._line, this._column),
+			new vscode.Position(this._line+1, 0),
+		), '\n');
+		this._line += 1;
+		this._column = 0;
+	}
 }
 
 class DataMassageViewProvider implements vscode.WebviewViewProvider {
