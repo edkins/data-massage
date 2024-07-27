@@ -16,6 +16,9 @@
       {
         "command": "data-massage.extend",
         "title": "Data Extend"
+      }, {
+        "command": "data-massage.openai-key",
+        "title": "Data Massage - Set OpenAI Key"
       }
     ],
     "viewsContainers": {

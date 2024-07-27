@@ -16,18 +16,37 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('data-massage.extend', () => {
+		vscode.commands.registerCommand('data-massage.extend', async() => {
 			const pythonScriptPath = vscode.Uri.joinPath(context.extensionUri, 'python', 'example_venv.py');
 
 			const editor = vscode.window.activeTextEditor;
 			if (editor !== undefined) {
 				const streamer = new Streamer(editor);
-				const process = execFile('python', [pythonScriptPath.fsPath]);
+				const openaiKey = await context.secrets.get('data-massage.openai-key');
+				const process = execFile('python', [pythonScriptPath.fsPath], {
+					env: {
+						OPENAI_API_KEY: openaiKey
+					}
+				});
 
 				process.stdout?.on('data', (data) => streamer.write(data));
 				process.stdin?.write(editor.document.getText(), () => process.stdin?.end());
 				process.stderr?.on('data', (data) => console.error(data));
 				process.addListener('exit', (code) => streamer.end());
+			}
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('data-massage.openai-key', async() => {
+			const apiKey = await vscode.window.showInputBox({
+				prompt: 'Enter your API Key',
+				password: true
+			});
+	
+			if (apiKey) {
+				await context.secrets.store('data-massage.openai-key', apiKey);
+				vscode.window.showInformationMessage('OpenAI API Key stored successfully');
 			}
 		})
 	);

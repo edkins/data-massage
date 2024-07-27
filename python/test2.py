@@ -11,16 +11,16 @@ def call_gpt(prompt):
       {"role": "user", "content": prompt}
     ]
   )
-  return completion.choices[0].message
+  return completion.choices[0].message.content
 
 def extend_evals(df):
   csv = df.to_csv(index=False, header=True)
   prompt = f'Generate some more evals in the likeness of this csv: {csv}. ONLY return a csv with the same columns.'
   response = call_gpt(prompt)
-  output_data = pd.read_csv(io.StringIO(response))
-
   print(response)
-  print(output_data)
+  # output_data = pd.read_csv(io.StringIO(response))
+
+  # print(output_data)
 
   return response
 

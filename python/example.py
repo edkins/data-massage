@@ -8,6 +8,7 @@ from test2 import extend_evals
 def main():
     inp = sys.stdin.read()
     df = pd.read_csv(io.StringIO(inp))
+    print(inp)
     extend_evals(df)
 
 if __name__ == '__main__':
