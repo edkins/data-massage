@@ -1,5 +1,12 @@
+import sys
+import time
+
 def main():
-    print('Hello from example.py!')
+    inp = sys.stdin.read()
+    for _ in range(20):
+        sys.stdout.write(f"{inp} was read from stdin by example.py\n")
+        sys.stdout.flush()
+        time.sleep(1)
 
 if __name__ == '__main__':
     main()

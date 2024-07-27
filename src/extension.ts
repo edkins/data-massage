@@ -1,6 +1,6 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import * as vscode from 'vscode';
 
 // This method is called when your extension is activated
@@ -18,17 +18,19 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('data-massage.extend', () => {
 			const pythonScriptPath = vscode.Uri.joinPath(context.extensionUri, 'python', 'example.py');
-			exec(`python ${pythonScriptPath.fsPath}`, (error, stdout, stderr) => {
-				if (error) {
-					vscode.window.showErrorMessage(error.message);
-					return;
-				}
-				if (stderr) {
-					vscode.window.showErrorMessage(stderr);
-					return;
-				}
-				vscode.window.showInformationMessage(stdout);
-			});
+
+			const editor = vscode.window.activeTextEditor;
+			if (editor !== undefined) {
+				const process = execFile('python', [pythonScriptPath.fsPath]);
+
+				process.stdout?.on('data', (data) => {
+					editor?.edit((editBuilder) => {
+						editBuilder.insert(editor.selection.active, data.toString());
+					});
+				});
+
+				process.stdin?.write('hello', () => process.stdin?.end());
+			}
 		})
 	);
 }
