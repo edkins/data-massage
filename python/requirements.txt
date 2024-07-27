@@ -4,3 +4,8 @@ csv
 io
 numpy
 sentences-transformers
+langchain 
+langchain_community 
+langchain_chroma
+langchain-openai
+langchainhub
