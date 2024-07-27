@@ -1,2 +1,6 @@
 openai
 pandas
+csv
+io
+numpy
+sentences-transformers
