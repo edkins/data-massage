@@ -11,7 +11,7 @@ def extend_evals(data): # data is a pandas dataframe or a csv string
     csv = data.to_csv(index=False, header=True)
   
   prompt = f'Generate some more evals in the likeness of this csv: {csv}. ONLY return a csv with the same columns.'
-  response = ut.call_claude(prompt)
+  response = ut.call_gpt(prompt)
   validator = Validate()
   ragcheck = RAGCheck()
   

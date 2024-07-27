@@ -1,0 +1,10 @@
+openai
+pandas
+numpy
+sentence-transformers
+langchain 
+langchain_community 
+langchain_chroma
+langchain-openai
+langchainhub
+spacy

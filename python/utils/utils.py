@@ -33,4 +33,4 @@ def call_claude(prompt):
       ]
   )
 
-  return message.text
+  return message.content[0].text

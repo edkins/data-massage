@@ -34,7 +34,7 @@ class Validate():
         # Read the data into a DataFrame
         df = pd.DataFrame(reader)
         # Concatenate 'question' and 'answer' columns
-        
+        print(df)
         # Compute embeddings for all combined items
         embeddings = self.get_embedding(df['question'])
         
