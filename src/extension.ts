@@ -23,16 +23,17 @@ export function activate(context: vscode.ExtensionContext) {
 			if (editor !== undefined) {
 				const streamer = new Streamer(editor);
 				const openaiKey = await context.secrets.get('data-massage.openai-key');
-				const process = execFile('python', [pythonScriptPath.fsPath], {
+				const p = execFile('python', [pythonScriptPath.fsPath, 'extend'], {
 					env: {
-						OPENAI_API_KEY: openaiKey
+						OPENAI_API_KEY: openaiKey,
+						PATH: process.env.PATH,
 					}
 				});
 
-				process.stdout?.on('data', (data) => streamer.write(data));
-				process.stdin?.write(editor.document.getText(), () => process.stdin?.end());
-				process.stderr?.on('data', (data) => console.error(data));
-				process.addListener('exit', (code) => streamer.end());
+				p.stdout?.on('data', (data) => streamer.write(data));
+				p.stdin?.write(editor.document.getText(), () => p.stdin?.end());
+				p.stderr?.on('data', (data) => console.error(data));
+				p.addListener('exit', (code) => streamer.end());
 			}
 		})
 	);

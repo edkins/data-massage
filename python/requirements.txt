@@ -1,9 +1,7 @@
 openai
 pandas
-csv
-io
 numpy
-sentences-transformers
+sentence-transformers
 langchain 
 langchain_community 
 langchain_chroma
