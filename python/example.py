@@ -4,6 +4,18 @@ import json
 import pandas as pd
 import sys
 
+def remove_first_line(s):
+    # Find the index of the first newline character
+    newline_index = s.find('\n')
+    
+    # If a newline character is found, slice the string
+    if newline_index != -1:
+        return s[newline_index + 1:]
+    else:
+        # If no newline character is found, return the original string
+        return s
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('command', type=str)
@@ -21,9 +33,12 @@ def main():
         amount = payload.get('count', 20)
 
         df = pd.read_csv(io.StringIO(inp))
-        
+        expected_columns = list(df.columns)
         extension = extend_evals(df, hint, amount)
-        print(extension)
+
+        if(extension.startswith(expected_columns[0])):
+            extension = remove_first_line(extension)
+
         with open(args.file, 'a') as f:
             if not inp.endswith('\n'):
                 f.write('\n')

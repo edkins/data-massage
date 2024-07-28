@@ -6,7 +6,7 @@ from utils.RagCheck import RAGCheck
 import utils.utils as ut
 from utils import csv_manipulation
 
-def remove_duplicates(data, threshold=0.5): # data is a pandas dataframe or a csv string
+def remove_duplicates(data, threshold=0.7): # data is a pandas dataframe or a csv string
   if isinstance(data, pd.DataFrame):
     csv = data.to_csv(index=False, header=True)
   else:

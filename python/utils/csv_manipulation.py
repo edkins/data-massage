@@ -66,7 +66,7 @@ def is_human_column(column: str) -> bool:
     Returns:
         bool: True if the column is a human column, False otherwise.
     """
-    return 'human' in column.lower()
+    return 'human' in column.lower() or 'model_eval' in column.lower()
 
 def remove_human_columns_df(data) -> tuple[pd.DataFrame, ColumnTranslator]:
     """
