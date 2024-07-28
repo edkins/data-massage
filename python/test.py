@@ -44,8 +44,5 @@ if __name__ == '__main__':
   df = pd.read_parquet("mmlu data.parquet")
 
   first_five = df.head()
-  print(first_five)
-  print(extend_evals(first_five))
-
 
 

@@ -6,7 +6,7 @@ def call_gpt(prompt):
   completion = client.chat.completions.create(
     model="gpt-4o-mini",
     messages=[
-      {"role": "system", "content": "You are an evals generator."},
+      {"role": "system", "content": "You are an evals generator. If you get a CSV, return a CSV with the same columns."},
       {"role": "user", "content": prompt}
     ]
   )

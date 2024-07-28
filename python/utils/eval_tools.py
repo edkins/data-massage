@@ -34,9 +34,15 @@ class Validate():
         # Read the data into a DataFrame
         df = pd.DataFrame(reader)
         # Concatenate 'question' and 'answer' columns
-        print(df)
         # Compute embeddings for all combined items
-        embeddings = self.get_embedding(df['question'])
+        print(df.head())
+
+        try:
+          questions = df['question'].tolist()
+        except:
+          questions = df[df.columns[0]].tolist()
+
+        embeddings = self.get_embedding(questions)
         
         # Convert embeddings to numpy array
         embeddings = np.array(embeddings)

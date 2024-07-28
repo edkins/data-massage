@@ -16,9 +16,8 @@ def main():
     if args.command == 'extend':
         inp = sys.stdin.read()
         df = pd.read_csv(io.StringIO(inp))
-        print(inp)
         extension = extend_evals(df)
-        print(extension)
+        print("OUTPUT", extension)
     elif args.command == 'human_eval':
         with open(args.file, 'r') as f:
             inp = f.read()
