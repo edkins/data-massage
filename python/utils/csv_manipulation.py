@@ -113,7 +113,7 @@ def read_llm_csv_output(output: str, expected_columns: list[str], index=None) ->
     expected_header = ','.join(expected_columns) + '\n'
     if output.startswith(expected_header):
         output = output[len(expected_header):]
-    df = pd.read_csv(io.StringIO(output.strip()), header=None, names=expected_columns)
+    df = pd.read_csv(io.StringIO(output.strip()), header=None, names=expected_columns, on_bad_lines='warn')
     if index is not None:
         df.index = index
     return df
