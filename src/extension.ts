@@ -51,6 +51,22 @@ export function activate(context: vscode.ExtensionContext) {
 		return data;
 	}
 
+	function getFilename(): string {
+		const editor = vscode.window.activeTextEditor;
+		if (editor !== undefined) {
+			const filenameUri = editor.document.uri;
+			if (filenameUri.scheme !== 'file') {
+				vscode.window.showErrorMessage(`File must be saved first ${filenameUri}`);
+				throw new Error(`File must be saved first ${filenameUri}`);
+			}
+			editor.document.save();
+			return filenameUri.fsPath;
+		} else {
+			vscode.window.showErrorMessage('No active editor');
+			throw new Error('No active editor');
+		}
+	}
+
 	context.subscriptions.push(
 		vscode.commands.registerCommand('data-massage.extend', async(count?, hint?) => {
 			const pythonScriptPath = vscode.Uri.joinPath(context.extensionUri, 'python', 'example_venv.py');
@@ -91,6 +107,21 @@ export function activate(context: vscode.ExtensionContext) {
 		})
 	);
 
+	context.subscriptions.push(
+		vscode.commands.registerCommand('data-massage.edit-dodgy', async(hint) => {
+			if (hint === undefined) {
+				hint = await vscode.window.showInputBox({
+					prompt: 'Enter your hint (or empty to auto-fix)'
+				});
+			}
+			const filename = getFilename();
+			const payload = {hint};
+			const result = await collectPython(['edit_dodgy', '--file', filename, '--payload', JSON.stringify(payload)], '');
+			console.log(result);
+			const {rows_considered, rows_edited} = JSON.parse(result);
+			vscode.window.showInformationMessage(`Rows considered: ${rows_considered}, Rows edited: ${rows_edited}`);
+		})
+	);
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('data-massage.human-eval', async(opinion?: string) => {
@@ -203,6 +234,9 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 				case 'extend':
 					await vscode.commands.executeCommand('data-massage.extend', message.count, message.hint);
 					return;
+				case 'edit-dodgy':
+					await vscode.commands.executeCommand('data-massage.edit-dodgy', message.hint);
+					return;
 				case 'human-eval':
 					await vscode.commands.executeCommand('data-massage.human-eval', message.opinion, message.row ?? human_eval_row);
 					webviewView.webview.postMessage({ command: 'human-eval', row: human_eval_row, question: human_eval_question, answer: human_eval_answer });
@@ -283,8 +317,8 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 				<div id="edit" style="display:none">
 					<textarea id="edit_hint"></textarea>
 					<br>
-					<button id="edit_button">Fix dodgy</button>
-					<button id="edit_button">Edit all records</button>
+					<button id="edit_dodgy">Fix dodgy</button>
+					<button id="edit_all">Edit all records</button>
 				</div>
 				<div id="eval" style="display:none">
 					<textarea id="eval_hint"></textarea>
@@ -321,6 +355,9 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 				});
 				document.getElementById('delete_duplicates').addEventListener('click', () => {
 					vscode.postMessage({ command: 'delete_duplicates' });
+				});
+				document.getElementById('edit_dodgy').addEventListener('click', () => {
+					vscode.postMessage({ command: 'edit-dodgy', hint: document.getElementById('edit_hint').value });
 				});
 				document.getElementById('human_eval_correct').addEventListener('click', () => {
 					vscode.postMessage({ command: 'human-eval', opinion: 'correct', row: parseInt(document.getElementById('human_eval_row').textContent) });

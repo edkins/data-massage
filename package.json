@@ -17,6 +17,12 @@
         "command": "data-massage.extend",
         "title": "Data Extend"
       }, {
+        "command": "data-massage.edit-dodgy",
+        "title": "Data Edit Dodgy"
+      }, {
+        "command": "data-massage.remove_duplicate",
+        "title": "Data Remove Duplicate"
+      },{
         "command": "data-massage.human-eval",
         "title": "Data Human Eval"
       }, {

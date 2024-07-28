@@ -68,6 +68,23 @@ def is_human_column(column: str) -> bool:
     """
     return 'human' in column.lower()
 
+def remove_human_columns_df(data) -> tuple[pd.DataFrame, ColumnTranslator]:
+    """
+    Remove human columns from a pandas DataFrame.
+
+    Args:
+        data (DataFrame): A pandas DataFrame or bytes/str containing the CSV.
+
+    Returns:
+        tuple[str, ColumnTranslator]: A tuple containing the DataFrame without human columns
+        and a ColumnTranslator object for reconsituting them afterwards.
+    """
+    df = to_df(data)
+    all_columns = [(column, is_human_column(column)) for column in df.columns]
+    translator = ColumnTranslator(all_columns)
+    stripped = translator.strip(df)
+    return stripped, translator
+
 def remove_human_columns(data) -> tuple[str, ColumnTranslator]:
     """
     Remove human columns from a pandas DataFrame.
@@ -79,13 +96,10 @@ def remove_human_columns(data) -> tuple[str, ColumnTranslator]:
         tuple[str, ColumnTranslator]: A tuple containing the CSV string of the DataFrame without human columns
         and a ColumnTranslator object for reconsituting them afterwards.
     """
-    df = to_df(data)
-    all_columns = [(column, is_human_column(column)) for column in df.columns]
-    translator = ColumnTranslator(all_columns)
-    stripped = translator.strip(df)
+    stripped, translator = remove_human_columns_df(data)
     return stripped.to_csv(index=False, header=True), translator
 
-def read_llm_csv_output(output: str, expected_columns: list[str]) -> pd.DataFrame:
+def read_llm_csv_output(output: str, expected_columns: list[str], index=None) -> pd.DataFrame:
     """
     Read the output of an LLM model in CSV format and return a DataFrame.
 
@@ -99,4 +113,19 @@ def read_llm_csv_output(output: str, expected_columns: list[str]) -> pd.DataFram
     expected_header = ','.join(expected_columns) + '\n'
     if output.startswith(expected_header):
         output = output[len(expected_header):]
-    return pd.read_csv(io.StringIO(output), header=None, names=expected_columns)
+    df = pd.read_csv(io.StringIO(output.strip()), header=None, names=expected_columns)
+    if index is not None:
+        df.index = index
+    return df
+
+def find_dodgy_rows(df: pd.DataFrame) -> pd.Series:
+    """
+    Find the rows in a DataFrame that contain dodgy data.
+
+    Args:
+        df (DataFrame): A DataFrame with dodgy data.
+    """
+    if 'human' in df.columns:
+        return df['human'] == 'incorrect'
+    else:
+        raise ValueError("No 'human' column found in the DataFrame.")

@@ -27,6 +27,16 @@ def main():
         with open(args.file, 'a') as f:
             f.write(extension)
 
+    elif args.command == 'edit_dodgy':
+        from edit import edit_dodgy
+        with open(args.file, 'r') as f:
+            inp = f.read()
+        payload = json.loads(args.payload)
+        hint = payload.get('hint', '')
+        outp, rows_considered, rows_edited = edit_dodgy(inp, hint)
+        with open(args.file, 'w') as f:
+            f.write(outp)
+        print(json.dumps({'rows_considered': rows_considered, 'rows_edited': rows_edited}))
     elif args.command == 'human_eval':
         from human_eval import human_eval, human_insert
         with open(args.file, 'r') as f:
