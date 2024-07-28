@@ -20,7 +20,7 @@ def remove_duplicates(data, threshold=0.5): # data is a pandas dataframe or a cs
 def extend_evals(data, hint, amount=20): # data is a pandas dataframe or a csv string
   csv, translator = csv_manipulation.remove_human_columns(data)
 
-  if hint != '':
+  if hint == '':
     prompt = f'Generate {amount} evals in the likeness of this csv: {csv}.  ONLY return a csv WITH THE SAME COLUMNS. DO NOT SURROUND WITH BACKTICKS'
   else:
     prompt = f'Generate {amount} evals in the likeness of this csv. Follow these instructions: {hint}. Here is the csv: {csv}.  ONLY return a csv WITH THE SAME COLUMNS. DO NOT SURROUND WITH BACKTICKS'
