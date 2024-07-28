@@ -17,7 +17,7 @@ def remove_duplicates(data, threshold=0.5): # data is a pandas dataframe or a cs
   val = Validate()
   return val.filter_similar_items(csv, threshold)
 
-def extend_evals(data, hint, amount=20): # data is a pandas dataframe or a csv string
+def extend_evals(data, hint, amount=201): # data is a pandas dataframe or a csv string
   csv, translator = csv_manipulation.remove_human_columns(data)
 
   if hint == '':

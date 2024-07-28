@@ -96,6 +96,7 @@ def main():
         delete = remove_duplicates(df)
         with open(args.file, 'w') as f:
             f.write(delete)
+        print(json.dumps({'rows_deleted': str(len(df) - len(pd.read_csv(io.StringIO(delete))))}))
     else:
         raise ValueError(f"Unknown command: {args.command}")
 

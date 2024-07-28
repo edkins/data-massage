@@ -90,17 +90,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('data-massage.remove_duplicate', async() => {
-			const pythonScriptPath = vscode.Uri.joinPath(context.extensionUri, 'python', 'example_venv.py');
-
 			const editor = vscode.window.activeTextEditor;
 			if (editor !== undefined) {
-				const filenameUri = editor.document.uri;
-				if (filenameUri.scheme !== 'file') {
-					vscode.window.showErrorMessage(`File must be saved before human evaluation ${filenameUri}`);
-					return;
-				}
-				const filename = filenameUri.fsPath;
-				await collectPython(['remove_duplicate', '--file', filename], '');
+				const filename = getFilename();
+				const response = await collectPython(['remove_duplicate', '--file', filename], '');
+				const {rows_deleted} = JSON.parse(response);
+				vscode.window.showInformationMessage(`Rows deleted: ${rows_deleted}`);
 				console.log('removed_duplicate')
 			}
 		})
