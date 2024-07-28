@@ -68,9 +68,7 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('data-massage.extend', async(count?, hint?) => {
-			const pythonScriptPath = vscode.Uri.joinPath(context.extensionUri, 'python', 'example_venv.py');
-
+		vscode.commands.registerCommand('data-massage.extend', async(count?, hint?, mark_original_correct?) => {
 			const editor = vscode.window.activeTextEditor;
 			if (editor !== undefined) {
 				const filenameUri = editor.document.uri;
@@ -82,6 +80,7 @@ export function activate(context: vscode.ExtensionContext) {
 				const payload = {
 					count: count,
 					hint: hint,
+					mark_original_correct: mark_original_correct ?? false,
 				};
 				const result = await collectPython(['extend', '--file', filename, '--payload', JSON.stringify(payload)], '');
 				console.log(result)
@@ -249,7 +248,7 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 		webviewView.webview.onDidReceiveMessage(async message => {
 			switch (message.command) {
 				case 'extend':
-					await vscode.commands.executeCommand('data-massage.extend', message.count, message.hint);
+					await vscode.commands.executeCommand('data-massage.extend', message.count, message.hint, message.mark_original_correct);
 					return;
 				case 'edit-dodgy':
 					await vscode.commands.executeCommand('data-massage.edit-dodgy', message.hint);
@@ -323,6 +322,7 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 					<br>
 					<button id="extend">Extend by</button>
 					<input type="number" id="extend_amount" value="100">
+					<input type="checkbox" id="extend_mark_correct">Mark original correct
 					<br>
 					<input type="text" id="extend_hint" placeholder="Hint">
 					<hr>
@@ -373,7 +373,12 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 					}
 				});
 				document.getElementById('extend').addEventListener('click', () => {
-					vscode.postMessage({ command: 'extend', count: parseInt(document.getElementById('extend_amount').value), hint: document.getElementById('extend_hint').value });
+					vscode.postMessage({
+						command: 'extend',
+						count: parseInt(document.getElementById('extend_amount').value),
+						hint: document.getElementById('extend_hint').value,
+						mark_original_correct: document.getElementById('extend_mark_correct').checked
+					});
 				});
 				document.getElementById('delete_duplicates').addEventListener('click', () => {
 					vscode.postMessage({ command: 'delete_duplicates' });

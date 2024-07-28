@@ -19,15 +19,28 @@ def main():
         payload = json.loads(args.payload)
         hint = payload.get('hint', '')
         amount = payload.get('count', 20)
+        mark_original_correct = payload.get('mark_original_correct', False)
 
         df = pd.read_csv(io.StringIO(inp))
         
-        extension = extend_evals(df, hint, amount)
-        print(extension)
-        with open(args.file, 'a') as f:
-            if not inp.endswith('\n'):
-                f.write('\n')
-            f.write(extension)
+        if mark_original_correct:
+            if 'human' in df.columns:
+                # Mark all rows with empty or NaN human column as correct
+                df.loc[(df['human'] == '') | df['human'].isna()]['human'] = 'correct'
+            else:
+                # Add a human column and mark all rows as correct
+                df['human'] = 'correct'
+            extension = extend_evals(df, hint, amount)
+            original_csv = df.to_csv(index=False, header=True)
+            with open(args.file, 'w') as f:
+                f.write(original_csv)
+                f.write(extension)
+        else:
+            extension = extend_evals(df, hint, amount)
+            with open(args.file, 'a') as f:
+                if not inp.endswith('\n'):
+                    f.write('\n')
+                f.write(extension)
     elif args.command == 'edit_llm':
         from utils.RagCheck import RAGCheck
         with open(args.file, 'r') as f:
