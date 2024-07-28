@@ -25,6 +25,8 @@ def main():
         extension = extend_evals(df, hint, amount)
         print(extension)
         with open(args.file, 'a') as f:
+            if not inp.endswith('\n'):
+                f.write('\n')
             f.write(extension)
 
     elif args.command == 'edit_dodgy':
