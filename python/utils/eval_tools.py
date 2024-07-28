@@ -58,7 +58,7 @@ class Validate():
         # Filter out the items
         final_df = df.drop(list(to_remove)).reset_index(drop=True)
         
-        return final_df
+        return final_df.to_csv(index=False, header=True)
 
     def extract_keywords(self, text):
         """

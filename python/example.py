@@ -13,10 +13,20 @@ def main():
 
     if args.command == 'extend':
         from test2 import extend_evals
-        inp = sys.stdin.read()
+        with open(args.file, 'r') as f:
+            inp = f.read()
+        
+        payload = json.loads(args.payload)
+        hint = payload.get('hint', '')
+        amount = payload.get('count', 20)
+
         df = pd.read_csv(io.StringIO(inp))
-        extension = extend_evals(df)
-        print(inp + extension)
+        
+        extension = extend_evals(df, hint, amount)
+        print(extension)
+        with open(args.file, 'a') as f:
+            f.write(extension)
+
     elif args.command == 'human_eval':
         from human_eval import human_eval, human_insert
         with open(args.file, 'r') as f:
@@ -32,10 +42,12 @@ def main():
         print(json.dumps({'row': chosen_row, 'question': qa.get('question'), 'answer': qa.get('answer')}))
     elif args.command == 'remove_duplicate':
         from test2 import remove_duplicates
-        inp = sys.stdin.read()
+        with open(args.file, 'r') as f:
+            inp = f.read()
         df = pd.read_csv(io.StringIO(inp))
-        extension = remove_duplicates(df)
-        print(extension)
+        delete = remove_duplicates(df)
+        with open(args.file, 'w') as f:
+            f.write(delete)
     else:
         raise ValueError(f"Unknown command: {args.command}")
 

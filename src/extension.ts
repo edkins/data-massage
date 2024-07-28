@@ -52,16 +52,23 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('data-massage.extend', async() => {
+		vscode.commands.registerCommand('data-massage.extend', async(count?, hint?) => {
 			const pythonScriptPath = vscode.Uri.joinPath(context.extensionUri, 'python', 'example_venv.py');
 
 			const editor = vscode.window.activeTextEditor;
 			if (editor !== undefined) {
-				console.log('invoked extend function');
-				const streamer = new Streamer(editor);
-				await invokePython(['extend'], editor.document.getText(), (data) => streamer.write(data));
-				console.log('invoked extend function done');
-				streamer.end();
+				const filenameUri = editor.document.uri;
+				if (filenameUri.scheme !== 'file') {
+					vscode.window.showErrorMessage(`File must be saved before human evaluation ${filenameUri}`);
+					return;
+				}
+				const filename = filenameUri.fsPath;
+				const payload = {
+					count: count,
+					hint: hint,
+				};
+				const result = await collectPython(['extend', '--file', filename, '--payload', JSON.stringify(payload)], '');
+				console.log(result)
 			}
 		})
 	);
@@ -72,11 +79,14 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const editor = vscode.window.activeTextEditor;
 			if (editor !== undefined) {
-				console.log('invoked remove_duplicate function');
-				const streamer = new Streamer(editor);
-				await invokePython(['remove_duplicate'], editor.document.getText(), (data) => streamer.write(data));
-				console.log('invoked remove_duplicates function done');
-				streamer.end();
+				const filenameUri = editor.document.uri;
+				if (filenameUri.scheme !== 'file') {
+					vscode.window.showErrorMessage(`File must be saved before human evaluation ${filenameUri}`);
+					return;
+				}
+				const filename = filenameUri.fsPath;
+				await collectPython(['remove_duplicate', '--file', filename], '');
+				console.log('removed_duplicate')
 			}
 		})
 	);
@@ -191,7 +201,7 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 		webviewView.webview.onDidReceiveMessage(async message => {
 			switch (message.command) {
 				case 'extend':
-					await vscode.commands.executeCommand('data-massage.extend');
+					await vscode.commands.executeCommand('data-massage.extend', message.count, message.hint);
 					return;
 				case 'human-eval':
 					await vscode.commands.executeCommand('data-massage.human-eval', message.opinion, message.row ?? human_eval_row);
@@ -307,7 +317,7 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 					}
 				});
 				document.getElementById('extend').addEventListener('click', () => {
-					vscode.postMessage({ command: 'extend' });
+					vscode.postMessage({ command: 'extend', count: parseInt(document.getElementById('extend_amount').value), hint: document.getElementById('extend_hint').value });
 				});
 				document.getElementById('delete_duplicates').addEventListener('click', () => {
 					vscode.postMessage({ command: 'delete_duplicates' });

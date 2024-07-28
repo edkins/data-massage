@@ -17,13 +17,19 @@ def remove_duplicates(data, threshold=0.5): # data is a pandas dataframe or a cs
   val = Validate()
   return val.filter_similar_items(csv, threshold)
 
-def extend_evals(data, amount=20): # data is a pandas dataframe or a csv string
+def extend_evals(data, hint, amount=20): # data is a pandas dataframe or a csv string
   csv, translator = csv_manipulation.remove_human_columns(data)
 
-  prompt = f'Generate {amount} evals in the likeness of this csv: {csv}. ONLY return a csv WITH THE SAME COLUMNS. DO NOT SURROUND WITH BACKTICKS'
+  if hint != '':
+    prompt = f'Generate {amount} evals in the likeness of this csv: {csv}.  ONLY return a csv WITH THE SAME COLUMNS. DO NOT SURROUND WITH BACKTICKS'
+  else:
+    prompt = f'Generate {amount} evals in the likeness of this csv. Follow these instructions: {hint}. Here is the csv: {csv}.  ONLY return a csv WITH THE SAME COLUMNS. DO NOT SURROUND WITH BACKTICKS'
+  
   response = ut.call_gpt(prompt)
   df = csv_manipulation.read_llm_csv_output(response, translator.kept_columns)
-  return translator.reconstitute(df).to_csv(index=False, header=False)
+  reconstructed = translator.reconstitute(df)
+
+  return reconstructed.to_csv(index=False, header=False)
 
 if __name__ == '__main__':
   # splits = {'test': 'all/test-00000-of-00001.parquet', 'validation': 'all/validation-00000-of-00001.parquet', 'dev': 'all/dev-00000-of-00001.parquet', 'auxiliary_train': 'all/auxiliary_train-00000-of-00001.parquet'}
