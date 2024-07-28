@@ -4,6 +4,7 @@ import io
 from utils.eval_tools import Validate 
 from utils.RagCheck import RAGCheck
 import utils.utils as ut
+from utils import csv_manipulation
 
 def remove_duplicates(data, threshold=0.5): # data is a pandas dataframe or a csv string
   if isinstance(data, pd.DataFrame):
@@ -17,19 +18,12 @@ def remove_duplicates(data, threshold=0.5): # data is a pandas dataframe or a cs
   return val.filter_similar_items(csv, threshold)
 
 def extend_evals(data, amount=20): # data is a pandas dataframe or a csv string
-
-  if isinstance(data, pd.DataFrame):
-    csv = data.to_csv(index=False, header=True)
-  else:
-    csv_data = io.StringIO(data)
-    df = pd.read_csv(csv_data)
-    csv = df.to_csv(index=False, header=True)
+  csv, translator = csv_manipulation.remove_human_columns(data)
 
   prompt = f'Generate {amount} evals in the likeness of this csv: {csv}. ONLY return a csv WITH THE SAME COLUMNS. DO NOT SURROUND WITH BACKTICKS'
   response = ut.call_gpt(prompt)
-  df = pd.read_csv(io.StringIO(response))
-
-  return df.to_csv(index=False, header=False)
+  df = csv_manipulation.read_llm_csv_output(response, translator.kept_columns)
+  return translator.reconstitute(df).to_csv(index=False, header=False)
 
 if __name__ == '__main__':
   # splits = {'test': 'all/test-00000-of-00001.parquet', 'validation': 'all/validation-00000-of-00001.parquet', 'dev': 'all/dev-00000-of-00001.parquet', 'auxiliary_train': 'all/auxiliary_train-00000-of-00001.parquet'}
