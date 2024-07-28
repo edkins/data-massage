@@ -3,6 +3,11 @@
 import { execFile } from 'child_process';
 import * as vscode from 'vscode';
 
+let human_eval_row:string|undefined = undefined;
+let human_eval_question:string|undefined = undefined;
+let human_eval_answer:string|undefined = undefined;
+let human_eval_column:string = 'human';
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -15,6 +20,37 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.registerWebviewViewProvider('data-massage', new DataMassageViewProvider(context.extensionUri))
 	);
 
+	async function invokePython(args: string[], stdin: string, on_stdout: (data: string) => void): Promise<number> {
+		const pythonScriptPath = vscode.Uri.joinPath(context.extensionUri, 'python', 'example_venv.py');
+		const openaiKey = await context.secrets.get('data-massage.openai-key');
+		const p = execFile('python', [pythonScriptPath.fsPath, ...args], {
+			env: {
+				OPENAI_API_KEY: openaiKey,
+				PATH: process.env.PATH,
+			}
+		});
+		p.stdin?.write(stdin, () => p.stdin?.end());
+		p.stdout?.on('data', on_stdout);
+		p.stderr?.on('data', (data) => console.error(data));
+
+		return await new Promise((resolve) => {
+			p.addListener('exit', (code) => resolve(code ?? -123));
+		});
+	}
+
+	async function collectPython(args: string[], stdin: string): Promise<string> {
+		console.error('collectPython', args);
+		let data = '';
+		const code = await invokePython(args, stdin, (chunk) => data += chunk);
+		console.error('collectPythonCode', code);
+		if (code !== 0) {
+			vscode.window.showErrorMessage('Failed to run Python script');
+			throw new Error('Failed to run Python script');
+		}
+		console.error('collectPythonOutput', data);
+		return data;
+	}
+
 	context.subscriptions.push(
 		vscode.commands.registerCommand('data-massage.extend', async() => {
 			const pythonScriptPath = vscode.Uri.joinPath(context.extensionUri, 'python', 'example_venv.py');
@@ -22,18 +58,41 @@ export function activate(context: vscode.ExtensionContext) {
 			const editor = vscode.window.activeTextEditor;
 			if (editor !== undefined) {
 				const streamer = new Streamer(editor);
-				const openaiKey = await context.secrets.get('data-massage.openai-key');
-				const p = execFile('python', [pythonScriptPath.fsPath, 'extend'], {
-					env: {
-						OPENAI_API_KEY: openaiKey,
-						PATH: process.env.PATH,
-					}
-				});
+				await invokePython(['extend'], editor.document.getText(), (data) => streamer.write(data));
+				streamer.end();
+			}
+		})
+	);
 
-				p.stdout?.on('data', (data) => streamer.write(data));
-				p.stdin?.write(editor.document.getText(), () => p.stdin?.end());
-				p.stderr?.on('data', (data) => console.error(data));
-				p.addListener('exit', (code) => streamer.end());
+	context.subscriptions.push(
+		vscode.commands.registerCommand('data-massage.human-eval', async(opinion?: string) => {
+			if (opinion === undefined) {
+				opinion = await vscode.window.showInputBox({
+					prompt: 'Enter your opinion (correct, wrong, unsure)'
+				});
+			}
+			if (opinion === undefined) {
+				return;
+			}
+
+			const editor = vscode.window.activeTextEditor;
+			if (editor !== undefined) {
+				const filenameUri = editor.document.uri;
+				if (filenameUri.scheme !== 'file') {
+					vscode.window.showErrorMessage(`File must be saved before human evaluation ${filenameUri}`);
+					return;
+				}
+				const filename = filenameUri.fsPath;
+				const payload = {
+					row: human_eval_row,
+					column: human_eval_column,
+					value: opinion,
+				};
+				const result = await collectPython(['human_eval', '--file', filename, '--payload', JSON.stringify(payload)], '');
+				const result_payload = JSON.parse(result);
+				human_eval_row = result_payload.row;
+				human_eval_question = result_payload.question;
+				human_eval_answer = result_payload.answer;
 			}
 		})
 	);
@@ -102,6 +161,7 @@ class Streamer {
 }
 
 class DataMassageViewProvider implements vscode.WebviewViewProvider {
+	private _view?: vscode.WebviewView;
 	constructor(private readonly _extensionUri: vscode.Uri) {
 		this._extensionUri = _extensionUri;
 	}
@@ -110,10 +170,14 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 			enableScripts: true,
 			localResourceRoots: [vscode.Uri.joinPath(this._extensionUri, 'media')]
 		};
-		webviewView.webview.onDidReceiveMessage(message => {
+		webviewView.webview.onDidReceiveMessage(async message => {
 			switch (message.command) {
 				case 'extend':
-					vscode.commands.executeCommand('data-massage.extend');
+					await vscode.commands.executeCommand('data-massage.extend');
+					return;
+				case 'human-eval':
+					await vscode.commands.executeCommand('data-massage.human-eval', message.opinion, message.row ?? human_eval_row);
+					webviewView.webview.postMessage({ command: 'human-eval', row: human_eval_row, question: human_eval_question, answer: human_eval_answer });
 					return;
 			}
 		});
@@ -166,6 +230,7 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 				<div id="visit_grow_shrink" class="option active">Grow/shrink</div>
 				<div id="visit_edit" class="option">Edit</div>
 				<div id="visit_eval" class="option">Eval</div>
+				<div id="visit_human_eval" class="option">Human Eval</div>
 			</div>
 			<div id="panel_main">
 				<div id="grow_shrink">
@@ -195,36 +260,82 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 					<br>
 					<button id="eval_button">Mark dodgy</button>
 				</div>
+				<div id="human_eval" style="display:none">
+					Row <span id="human_eval_row">-</span>
+					<br>
+					Question: <span id="human_eval_question">-</span>
+					<br>
+					Answer: <span id="human_eval_answer">-</span>
+					<br>
+					<button id="human_eval_correct">Correct</button>
+					<button id="human_eval_wrong">Wrong</button>
+					<button id="human_eval_unsure">Unsure</button>
+				</div>
 			</div>
 			</div>
 			<script>
 				const vscode = acquireVsCodeApi();
+				window.addEventListener('message', event => {
+					const message = event.data;
+					switch (message.command) {
+						case 'human-eval':
+							document.getElementById('human_eval_row').textContent = message.row;
+							document.getElementById('human_eval_question').textContent = message.question;
+							document.getElementById('human_eval_answer').textContent = message.answer;
+							break;
+					}
+				});
 				document.getElementById('extend').addEventListener('click', () => {
 					vscode.postMessage({ command: 'extend' });
+				});
+				document.getElementById('human_eval_correct').addEventListener('click', () => {
+					vscode.postMessage({ command: 'human-eval', opinion: 'correct', row: parseInt(document.getElementById('human_eval_row').textContent) });
+				});
+				document.getElementById('human_eval_wrong').addEventListener('click', () => {
+					vscode.postMessage({ command: 'human-eval', opinion: 'wrong', row: parseInt(document.getElementById('human_eval_row').textContent) });
+				});
+				document.getElementById('human_eval_unsure').addEventListener('click', () => {
+					vscode.postMessage({ command: 'human-eval', opinion: 'unsure', row: parseInt(document.getElementById('human_eval_row').textContent) });
 				});
 				document.getElementById('visit_grow_shrink').addEventListener('click', () => {
 					document.getElementById('visit_grow_shrink').classList.add('active');
 					document.getElementById('visit_edit').classList.remove('active');
 					document.getElementById('visit_eval').classList.remove('active');
+					document.getElementById('visit_human_eval').classList.remove('active');
 					document.getElementById('grow_shrink').style.display = 'block';
 					document.getElementById('edit').style.display = 'none';
 					document.getElementById('eval').style.display = 'none';
+					document.getElementById('human_eval').style.display = 'none';
 				});
 				document.getElementById('visit_edit').addEventListener('click', () => {
 					document.getElementById('visit_grow_shrink').classList.remove('active');
 					document.getElementById('visit_edit').classList.add('active');
 					document.getElementById('visit_eval').classList.remove('active');
+					document.getElementById('visit_human_eval').classList.remove('active');
 					document.getElementById('grow_shrink').style.display = 'none';
 					document.getElementById('edit').style.display = 'block';
 					document.getElementById('eval').style.display = 'none';
+					document.getElementById('human_eval').style.display = 'none';
 				});
 				document.getElementById('visit_eval').addEventListener('click', () => {
 					document.getElementById('visit_grow_shrink').classList.remove('active');
 					document.getElementById('visit_edit').classList.remove('active');
 					document.getElementById('visit_eval').classList.add('active');
+					document.getElementById('visit_human_eval').classList.remove('active');
 					document.getElementById('grow_shrink').style.display = 'none';
 					document.getElementById('edit').style.display = 'none';
 					document.getElementById('eval').style.display = 'block';
+					document.getElementById('human_eval').style.display = 'none';
+				});
+				document.getElementById('visit_human_eval').addEventListener('click', () => {
+					document.getElementById('visit_grow_shrink').classList.remove('active');
+					document.getElementById('visit_edit').classList.remove('active');
+					document.getElementById('visit_eval').classList.remove('active');
+					document.getElementById('visit_human_eval').classList.add('active');
+					document.getElementById('grow_shrink').style.display = 'none';
+					document.getElementById('edit').style.display = 'none';
+					document.getElementById('eval').style.display = 'none';
+					document.getElementById('human_eval').style.display = 'block';
 				});
 			</script>
 			</body>

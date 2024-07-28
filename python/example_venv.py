@@ -9,7 +9,8 @@ def venv_stuff():
     if not os.path.exists(env):
         venv.EnvBuilder(with_pip=True).create(env)
         subprocess.run([f'{env}/bin/pip', 'install', '-r', f'{file_dir}/requirements.txt'], check=True, stdout=sys.stderr)
-    subprocess.run([f'{env}/bin/python', f'{file_dir}/example.py', '--', *sys.argv[1:]])
+    output = subprocess.run([f'{env}/bin/python', f'{file_dir}/example.py', *sys.argv[1:]])
+    sys.exit(output.returncode)
 
 if __name__ == '__main__':
     venv_stuff()
