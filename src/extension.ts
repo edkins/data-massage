@@ -57,12 +57,30 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const editor = vscode.window.activeTextEditor;
 			if (editor !== undefined) {
+				console.log('invoked extend function');
 				const streamer = new Streamer(editor);
 				await invokePython(['extend'], editor.document.getText(), (data) => streamer.write(data));
+				console.log('invoked extend function done');
 				streamer.end();
 			}
 		})
 	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('data-massage.remove_duplicate', async() => {
+			const pythonScriptPath = vscode.Uri.joinPath(context.extensionUri, 'python', 'example_venv.py');
+
+			const editor = vscode.window.activeTextEditor;
+			if (editor !== undefined) {
+				console.log('invoked remove_duplicate function');
+				const streamer = new Streamer(editor);
+				await invokePython(['remove_duplicate'], editor.document.getText(), (data) => streamer.write(data));
+				console.log('invoked remove_duplicates function done');
+				streamer.end();
+			}
+		})
+	);
+
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('data-massage.human-eval', async(opinion?: string) => {
@@ -179,6 +197,9 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 					await vscode.commands.executeCommand('data-massage.human-eval', message.opinion, message.row ?? human_eval_row);
 					webviewView.webview.postMessage({ command: 'human-eval', row: human_eval_row, question: human_eval_question, answer: human_eval_answer });
 					return;
+				case 'delete_duplicates':
+					await vscode.commands.executeCommand('data-massage.remove_duplicate');
+					return;
 			}
 		});
 		webviewView.webview.html = `<!DOCTYPE html>
@@ -287,6 +308,9 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 				});
 				document.getElementById('extend').addEventListener('click', () => {
 					vscode.postMessage({ command: 'extend' });
+				});
+				document.getElementById('delete_duplicates').addEventListener('click', () => {
+					vscode.postMessage({ command: 'delete_duplicates' });
 				});
 				document.getElementById('human_eval_correct').addEventListener('click', () => {
 					vscode.postMessage({ command: 'human-eval', opinion: 'correct', row: parseInt(document.getElementById('human_eval_row').textContent) });

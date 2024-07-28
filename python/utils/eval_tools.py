@@ -35,7 +35,6 @@ class Validate():
         df = pd.DataFrame(reader)
         # Concatenate 'question' and 'answer' columns
         # Compute embeddings for all combined items
-        print(df.head())
 
         try:
           questions = df['question'].tolist()

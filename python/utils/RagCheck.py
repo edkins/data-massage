@@ -61,7 +61,7 @@ class RAGCheck:
         results = []
 
         for index, row in df.iterrows():
-            question = row['question']
+            question = row[df.columns[0]]
             keywords = self.extract_keywords(question)
             wikipedia_texts = self.get_wikipedia_pages(keywords)
 
@@ -85,4 +85,4 @@ class RAGCheck:
                     'model_result': model_result + rag_result
                 })
 
-        return pd.DataFrame(results)
+        return pd.DataFrame(results).to_csv(index=False, header=False)

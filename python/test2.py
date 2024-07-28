@@ -5,8 +5,18 @@ from utils.eval_tools import Validate
 from utils.RagCheck import RAGCheck
 import utils.utils as ut
 
+def remove_duplicates(data, threshold=0.5): # data is a pandas dataframe or a csv string
+  if isinstance(data, pd.DataFrame):
+    csv = data.to_csv(index=False, header=True)
+  else:
+    csv_data = io.StringIO(data)
+    df = pd.read_csv(csv_data)
+    csv = df.to_csv(index=False, header=True)
 
-def extend_evals(data): # data is a pandas dataframe or a csv string
+  val = Validate()
+  return val.filter_similar_items(csv, threshold)
+
+def extend_evals(data, amount=20): # data is a pandas dataframe or a csv string
 
   if isinstance(data, pd.DataFrame):
     csv = data.to_csv(index=False, header=True)
@@ -15,15 +25,11 @@ def extend_evals(data): # data is a pandas dataframe or a csv string
     df = pd.read_csv(csv_data)
     csv = df.to_csv(index=False, header=True)
 
-  prompt = f'Generate some more evals in the likeness of this csv: {csv}. ONLY return a csv WITH THE SAME COLUMNS. DO NOT SURROUND WITH BACKTICKS'
+  prompt = f'Generate {amount} evals in the likeness of this csv: {csv}. ONLY return a csv WITH THE SAME COLUMNS. DO NOT SURROUND WITH BACKTICKS'
   response = ut.call_gpt(prompt)
-  validator = Validate()
-  ragcheck = RAGCheck()
-  
-  validated = validator.validate(response)
-  ragchecked = ragcheck.rag_check(validated)
+  df = pd.read_csv(io.StringIO(response))
 
-  return ragchecked
+  return df.to_csv(index=False, header=False)
 
 if __name__ == '__main__':
   # splits = {'test': 'all/test-00000-of-00001.parquet', 'validation': 'all/validation-00000-of-00001.parquet', 'dev': 'all/dev-00000-of-00001.parquet', 'auxiliary_train': 'all/auxiliary_train-00000-of-00001.parquet'}

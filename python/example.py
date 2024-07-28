@@ -16,7 +16,7 @@ def main():
         inp = sys.stdin.read()
         df = pd.read_csv(io.StringIO(inp))
         extension = extend_evals(df)
-        print("OUTPUT", extension)
+        print(inp + extension)
     elif args.command == 'human_eval':
         from human_eval import human_eval, human_insert
         with open(args.file, 'r') as f:
@@ -30,6 +30,12 @@ def main():
             f.write(outp)
         chosen_row, qa = human_eval(outp, column)
         print(json.dumps({'row': chosen_row, 'question': qa.get('question'), 'answer': qa.get('answer')}))
+    elif args.command == 'remove_duplicate':
+        from test2 import remove_duplicates
+        inp = sys.stdin.read()
+        df = pd.read_csv(io.StringIO(inp))
+        extension = remove_duplicates(df)
+        print(extension)
     else:
         raise ValueError(f"Unknown command: {args.command}")
 
