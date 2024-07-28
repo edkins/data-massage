@@ -124,6 +124,23 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	context.subscriptions.push(
+		vscode.commands.registerCommand('data-massage.edit_with_llm', async(hint) => {
+			if (hint === undefined) {
+				hint = await vscode.window.showInputBox({
+					prompt: 'Enter your hint (or empty to auto-fix)'
+				});
+			}
+			const filename = getFilename();
+			const payload = {hint};
+			const result = await collectPython(['edit_llm', '--file', filename, '--payload', JSON.stringify(payload)], '');
+			console.log(result);
+			const {rows_incorrect, rows_potentially_incorrect, rows_correct} = JSON.parse(result);
+			vscode.window.showInformationMessage(`Rows correct: ${rows_correct}, Rows Possibly Wrong: ${rows_potentially_incorrect}, Rows incorrect: ${rows_incorrect}`);
+		})
+	);
+
+
+	context.subscriptions.push(
 		vscode.commands.registerCommand('data-massage.human-eval', async(opinion?: string) => {
 			if (opinion === undefined) {
 				opinion = await vscode.window.showInputBox({
@@ -237,6 +254,9 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 				case 'edit-dodgy':
 					await vscode.commands.executeCommand('data-massage.edit-dodgy', message.hint);
 					return;
+				case 'edit_with_llm':
+					await vscode.commands.executeCommand('data-massage.edit_with_llm', message.hint);
+					return;
 				case 'human-eval':
 					await vscode.commands.executeCommand('data-massage.human-eval', message.opinion, message.row ?? human_eval_row);
 					webviewView.webview.postMessage({ command: 'human-eval', row: human_eval_row, question: human_eval_question, answer: human_eval_answer });
@@ -313,12 +333,14 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 					Duplicates: <span id="duplicate_count">-</span>
 					<br>
 					<button id="delete_duplicates">Remove duplicates</button>
+					<hr>					
 				</div>
 				<div id="edit" style="display:none">
 					<textarea id="edit_hint"></textarea>
 					<br>
 					<button id="edit_dodgy">Fix dodgy</button>
 					<button id="edit_all">Edit all records</button>
+					<button id="edit_with_llm">Check record with LLM</button>
 				</div>
 				<div id="eval" style="display:none">
 					<textarea id="eval_hint"></textarea>
@@ -358,6 +380,9 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 				});
 				document.getElementById('edit_dodgy').addEventListener('click', () => {
 					vscode.postMessage({ command: 'edit-dodgy', hint: document.getElementById('edit_hint').value });
+				}); edit_with_llm
+				document.getElementById('edit_with_llm').addEventListener('click', () => {
+					vscode.postMessage({ command: 'edit_with_llm', hint: document.getElementById('edit_hint').value });
 				});
 				document.getElementById('human_eval_correct').addEventListener('click', () => {
 					vscode.postMessage({ command: 'human-eval', opinion: 'correct', row: parseInt(document.getElementById('human_eval_row').textContent) });

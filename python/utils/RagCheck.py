@@ -6,6 +6,7 @@ import spacy
 from io import StringIO
 from openai import OpenAI
 from .utils import call_gpt, call_claude
+from . import csv_manipulation
 
 def init_model():
     model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
@@ -56,12 +57,13 @@ class RAGCheck:
         top_k_indices = similarities.topk(k=top_k)[1]
         return [chunks[i] for i in top_k_indices]
 
-    def rag_check(self, csv_string, top_k=5):
-        df = pd.read_csv(StringIO(csv_string))
+    def rag_check(self, csv_string, top_k=5, hint=''):
+        df = csv_manipulation.to_df(csv_string)
+        original_columns = list(df.columns)
         results = []
 
         for index, row in df.iterrows():
-            question = row[df.columns[0]]
+            question = row[original_columns[0]]
             keywords = self.extract_keywords(question)
             wikipedia_texts = self.get_wikipedia_pages(keywords)
 
@@ -72,17 +74,29 @@ class RAGCheck:
 
             if all_chunks:
                 top_chunks = self.get_top_chunks(question, all_chunks, top_k=top_k)
-                prompt = f"Check this question and answer to see if it is true. Here is the question: {question} Here are the answer choices and the selected answer: {row['choices']} Answer: {row['answer']} Here is some context: {' '.join(top_chunks)} Return 0 if the answer is incorrect and 1 if the answer is correct. ONLY RETURN 0 or 1.  DO NOT RETURN ANYTHING ELSE"
+
+                if hint == '':
+                    hint = 'try to fix any inaccuracies'                
+
+                prompt = f"Check this question and answer to see if it is true. See if the question answer pair conform to these instructions as well: {hint}. Here is the question: {question} Here is the proposed answer:  {row['answer']} Here is some context: {' '.join(top_chunks)} Return 0 if the answer is incorrect or doesnt conform to instructions and 1 if the answer is correct and does conform to instructions. ONLY RETURN 0 or 1.  DO NOT RETURN ANYTHING ELSE"
                 rag_result = call_gpt(prompt)
 
-                prompt = f"Check this question and answer to see if it is true. Here is the question: {question} Here are the answer choices and the selected answer: {row['choices']} Answer: {row['answer']} (0 indexed) Return 0 if the answer is incorrect and 1 if the answer is correct. ONLY RETURN 0 or 1."
+                prompt = f"Check this question and answer to see if it is true. See if the question answer pair conform to these instructions as well: {hint}. Here is the question: {question} Here is the proposed answer: {row['answer']}  Return 0 if the answer is incorrect or doesnt conform to instructions and 1 if the answer is correct and does conform to instructions. ONLY RETURN 0 or 1.  DO NOT RETURN ANYTHING ELSE"
                 model_result = call_gpt(prompt)
 
-                results.append({
-                    'question': question,
-                    'choices': row['choices'],
-                    'answer': row['answer'],
-                    'model_result': model_result + rag_result
-                })
+                result_row = row.to_dict()
+                
+                concat = model_result + rag_result
+                if concat == '00':
+                    result_row['model_result'] = 0
+                elif concat == '01':
+                    result_row['model_result'] = 1
+                elif concat == '10':
+                    result_row['model_result'] = 1
+                else:
+                    result_row['model_result'] = 2
+                    
+                results.append(result_row)
 
-        return pd.DataFrame(results).to_csv(index=False, header=False)
+        results_df = pd.DataFrame(results)
+        return results_df.to_csv(index=False, header=True)

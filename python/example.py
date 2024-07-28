@@ -26,6 +26,29 @@ def main():
         print(extension)
         with open(args.file, 'a') as f:
             f.write(extension)
+    elif args.command == 'edit_llm':
+        from utils.RagCheck import RAGCheck
+        with open(args.file, 'r') as f:
+            inp = f.read()
+
+        payload = json.loads(args.payload)
+        hint = payload.get('hint', '')
+        checker = RAGCheck()
+        checked = checker.rag_check(inp, 5, hint)
+
+        with open(args.file, 'w') as f:
+            f.write(checked)
+
+        df = pd.read_csv(io.StringIO(checked))
+        value_counts = df['model_result'].value_counts()
+
+        # Load counts into variables, defaulting to 0 if the value is not found
+        count_00 = value_counts.get(0, 0)
+        count_01 = value_counts.get(1, 0)
+        count_11 = value_counts.get(2, 0)
+
+        print(json.dumps({'rows_incorrect': str(count_00), 'rows_potentially_incorrect': str(count_01), 'rows_correct': str(count_11)}))
+
 
     elif args.command == 'edit_dodgy':
         from edit import edit_dodgy
