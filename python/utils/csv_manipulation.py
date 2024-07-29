@@ -43,7 +43,7 @@ class ColumnTranslator:
                 columns[column] = [''] * len(df)
             else:
                 columns[column] = df[column]
-        return pd.DataFrame(columns)
+        return pd.DataFrame(columns, index=df.index)
 
 def to_df(data) -> pd.DataFrame:
     """

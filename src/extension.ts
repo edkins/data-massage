@@ -63,6 +63,26 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
+	function updateCurrentLine(editor: vscode.TextEditor) {
+		const line = editor.selections[0].active.line + 1;
+		let question = '';
+		let answer = '';
+		const firstLineText = editor.document.lineAt(0).text;
+		const fields = splitCsvLine(firstLineText);
+		const lineText = editor.document.lineAt(line - 1).text;
+		const lineFields = splitCsvLine(lineText);
+		for (let i = 0; i < fields.length; i++) {
+			const field = fields[i];
+			if (field === 'question') {
+				question = lineFields[i];
+			}
+			if (field === 'answer') {
+				answer = lineFields[i];
+			}
+		}
+		viewProvider.updateCurrentLine(line, question, answer);
+	}
+
 	context.subscriptions.push(
 		vscode.commands.registerCommand('data-massage.extend', async(count?, hint?, mark_original_correct?) => {
 			const editor = vscode.window.activeTextEditor;
@@ -169,10 +189,37 @@ export function activate(context: vscode.ExtensionContext) {
 				const result = await collectPython(['human_eval', '--file', filename, '--payload', JSON.stringify(payload)], '');
 				const result_payload = JSON.parse(result);
 				editor.selection = new vscode.Selection(result_payload.row - 1, 0, result_payload.row - 1, 0);
-				return result_payload;
 			}
 		})
 	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('data-massage.human-eval-fix', async(hint?:string, row?:number) => {
+			const editor = vscode.window.activeTextEditor;
+			if (editor === undefined) {
+				return;
+			}
+			if (hint === undefined) {
+				hint = await vscode.window.showInputBox({
+					prompt: 'Enter your hint'
+				});
+			}
+			if (hint === undefined) {
+				return;
+			}
+			if (row === undefined) {
+				row = editor.selection.active.line + 1;
+			}
+			const filename = getFilename();
+			const payload = {
+				row,
+				column: 'human',
+				hint,
+			};
+			const result = await collectPython(['human_eval_fix', '--file', filename, '--payload', JSON.stringify(payload)], '');
+			editor.selection = new vscode.Selection(row - 1, 0, row - 1, 0);
+			viewProvider.clearHumanEvalHint();
+		}));
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('data-massage.openai-key', async() => {
@@ -190,23 +237,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(event => {
         if (event.textEditor === vscode.window.activeTextEditor) {
-            const line = event.selections[0].active.line + 1;
-			let question = '';
-			let answer = '';
-			const firstLineText = event.textEditor.document.lineAt(0).text;
-			const fields = splitCsvLine(firstLineText);
-			const lineText = event.textEditor.document.lineAt(line - 1).text;
-			const lineFields = splitCsvLine(lineText);
-			for (let i = 0; i < fields.length; i++) {
-				const field = fields[i];
-				if (field === 'question') {
-					question = lineFields[i];
-				}
-				if (field === 'answer') {
-					answer = lineFields[i];
-				}
-			}
-            viewProvider.updateCurrentLine(line, question, answer);
+            updateCurrentLine(event.textEditor);
         }
     }));
 }
@@ -293,6 +324,13 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 			});
 		}
 	}
+	clearHumanEvalHint() {
+		if (this._view) {
+			this._view.webview.postMessage({
+				command: 'human-eval-clear-hint',
+			});
+		}
+	}
 	resolveWebviewView(webviewView: vscode.WebviewView, context: vscode.WebviewViewResolveContext, token: vscode.CancellationToken): Thenable<void> | void {
 		this._view = webviewView;
 		webviewView.webview.options = {
@@ -312,6 +350,9 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 					return;
 				case 'human-eval':
 					await vscode.commands.executeCommand('data-massage.human-eval', message.opinion, message.row);
+					return;
+				case 'human-eval-fix':
+					await vscode.commands.executeCommand('data-massage.human-eval-fix', message.fix, message.row);
 					return;
 				case 'delete_duplicates':
 					await vscode.commands.executeCommand('data-massage.remove_duplicate');
@@ -411,9 +452,16 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 					<br>
 					Answer: <span id="human_eval_answer">-</span>
 					<br>
-					<button id="human_eval_correct">Correct</button>
-					<button id="human_eval_wrong">Wrong</button>
+					<button id="human_eval_correct">Yes</button>
+					<button id="human_eval_wrong">No</button>
 					<button id="human_eval_unsure">Unsure</button>
+					<button id="human_eval_garbage">Poor quality</button>
+					<button id="human_eval_duplicate">Duplicate</button>
+					<br>
+					<br>
+					<textarea id="human_eval_hint"></textarea>
+					<br>
+					<button id="human_eval_fix">Fix</button>
 				</div>
 			</div>
 			</div>
@@ -426,6 +474,9 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 							document.getElementById('human_eval_row').textContent = message.row;
 							document.getElementById('human_eval_question').textContent = message.question;
 							document.getElementById('human_eval_answer').textContent = message.answer;
+							break;
+						case 'human-eval-clear-hint':
+							document.getElementById('human_eval_hint').value = '';
 							break;
 					}
 				});
@@ -457,6 +508,15 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 				});
 				document.getElementById('human_eval_unsure').addEventListener('click', () => {
 					vscode.postMessage({ command: 'human-eval', opinion: 'unsure', row: parseInt(document.getElementById('human_eval_row').textContent) });
+				});
+				document.getElementById('human_eval_garbage').addEventListener('click', () => {
+					vscode.postMessage({ command: 'human-eval', opinion: 'garbage', row: parseInt(document.getElementById('human_eval_row').textContent) });
+				});
+				document.getElementById('human_eval_duplicate').addEventListener('click', () => {
+					vscode.postMessage({ command: 'human-eval', opinion: 'duplicate', row: parseInt(document.getElementById('human_eval_row').textContent) });
+				});
+				document.getElementById('human_eval_fix').addEventListener('click', () => {
+					vscode.postMessage({ command: 'human-eval-fix', fix: document.getElementById('human_eval_hint').value, row: parseInt(document.getElementById('human_eval_row').textContent) });
 				});
 				document.getElementById('visit_grow_shrink').addEventListener('click', () => {
 					document.getElementById('visit_grow_shrink').classList.add('active');

@@ -100,6 +100,17 @@ def main():
             f.write(outp)
         chosen_row, qa = human_eval(outp, column)
         print(json.dumps({'row': chosen_row, 'question': qa.get('question'), 'answer': qa.get('answer')}))
+    elif args.command == 'human_eval_fix':
+        from human_eval import human_eval_fix
+        with open(args.file, 'r') as f:
+            inp = f.read()
+        payload = json.loads(args.payload)
+        column = payload.get('column', 'human')
+        row = payload.get('row')
+        hint = payload.get('hint')
+        outp = human_eval_fix(inp, row, column, hint)
+        with open(args.file, 'w') as f:
+            f.write(outp)
     elif args.command == 'remove_duplicate':
         from test2 import remove_duplicates
         with open(args.file, 'r') as f:

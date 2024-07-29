@@ -1,4 +1,5 @@
 import pandas as pd
+import sys
 import io
 from typing import Optional
 
@@ -23,3 +24,27 @@ def human_eval(data: str, column:str) -> tuple[int, dict[str,str]]:
   row = df[opportunities].sample(1).index[0]
   qa = df.loc[row].to_dict()
   return (int(row) + 2, qa)
+
+def human_eval_fix(data, row: int, column: str, hint: str) -> str:
+  import utils.utils as ut
+  from utils.csv_manipulation import read_llm_csv_output, remove_human_columns
+  df = pd.read_csv(io.StringIO(data))
+  mini_csv, translator = remove_human_columns(df.loc[row - 2:row - 1])
+  prompt = f"""Please correct the following single-row CSV data according to the hint provided.
+
+Hint: {hint}
+
+---begin csv---
+{mini_csv}
+---end csv---
+
+ONLY return a csv WITH THE SAME COLUMNS and a single data row (plus header). DO NOT SURROUND WITH BACKTICKS
+"""
+  response = ut.call_gpt(prompt)
+  corrected = read_llm_csv_output(response, translator.kept_columns, index=df.index[row - 2:row-1])
+  print(corrected, file=sys.stderr)
+  reconstituted = translator.reconstitute(corrected)
+  print(reconstituted, file=sys.stderr)
+  print(len(reconstituted), file=sys.stderr)
+  df.loc[row - 2:row - 2] = reconstituted.loc[row - 2:row - 2]
+  return df.to_csv(index=False, header=True)

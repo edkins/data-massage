@@ -25,6 +25,9 @@
       },{
         "command": "data-massage.human-eval",
         "title": "Data Human Eval"
+      },{
+        "command": "data-massage.human-eval-fix",
+        "title": "Data Human Fix Row"
       }, {
         "command": "data-massage.openai-key",
         "title": "Data Massage - Set OpenAI Key"
