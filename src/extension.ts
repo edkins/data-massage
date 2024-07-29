@@ -171,25 +171,25 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			const editor = vscode.window.activeTextEditor;
-			if (editor !== undefined) {
-				const filenameUri = editor.document.uri;
-				if (filenameUri.scheme !== 'file') {
-					vscode.window.showErrorMessage(`File must be saved before human evaluation ${filenameUri}`);
-					return;
-				}
-				if (row === undefined) {
-					row = editor.selection.active.line + 1;
-				}
-				const filename = filenameUri.fsPath;
-				const payload = {
-					row,
-					column: 'human',
-					value: opinion,
-				};
-				const result = await collectPython(['human_eval', '--file', filename, '--payload', JSON.stringify(payload)], '');
-				const result_payload = JSON.parse(result);
-				editor.selection = new vscode.Selection(result_payload.row - 1, 0, result_payload.row - 1, 0);
+			if (editor === undefined) {
+				return;
 			}
+			const filename = getFilename();
+			if (row === undefined) {
+				row = editor.selection.active.line + 1;
+			}
+			const payload = {
+				row,
+				column: 'human',
+				value: opinion,
+			};
+			const result = await collectPython(['human_eval', '--file', filename, '--payload', JSON.stringify(payload)], '');
+			const result_payload = JSON.parse(result);
+			if (result_payload.row === null || result_payload.row === undefined) {
+				vscode.window.showInformationMessage("No more rows to evaluate. You're all set!");
+				return;
+			}
+			editor.selection = new vscode.Selection(result_payload.row - 1, 0, result_payload.row - 1, 0);
 		})
 	);
 

@@ -99,7 +99,10 @@ def main():
         with open(args.file, 'w') as f:
             f.write(outp)
         chosen_row, qa = human_eval(outp, column)
-        print(json.dumps({'row': chosen_row, 'question': qa.get('question'), 'answer': qa.get('answer')}))
+        if chosen_row is None:
+            print(json.dumps({'row': None, 'question': None, 'answer': None}))
+        else:
+            print(json.dumps({'row': chosen_row, 'question': qa.get('question'), 'answer': qa.get('answer')}))
     elif args.command == 'human_eval_fix':
         from human_eval import human_eval_fix
         with open(args.file, 'r') as f:
