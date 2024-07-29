@@ -2,6 +2,26 @@ import sys
 from utils import csv_manipulation
 import utils.utils as ut
 
+def remove_dodgy(data) -> tuple[str,int]:
+    """
+    Remove dodgy data from the input data.
+
+    Args:
+        data: A CSV string or pandas dataframe.
+
+    Returns:
+        str: A CSV string with the dodgy data removed.
+        int: number of rows considered
+    """
+    df_all = csv_manipulation.to_df(data)
+    dodgy = csv_manipulation.find_dodgy_rows(df_all)
+    num_dodgy = dodgy.sum()
+    
+    # Remove the dodgy rows
+    df_clean = df_all[~dodgy]
+    
+    return df_clean.to_csv(index=False), int(num_dodgy)
+
 def edit_dodgy(data, hint:str) -> tuple[str,int,int]:
     """
     Edit the dodgy data in the input data.

@@ -118,6 +118,15 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	context.subscriptions.push(
+		vscode.commands.registerCommand('data-massage.remove-dodgy', async(hint) => {
+			const filename = getFilename();
+			const result = await collectPython(['remove_dodgy', '--file', filename], '');
+			const {num_removed} = JSON.parse(result);
+			vscode.window.showInformationMessage(`Dodgy Rows Removed: ${num_removed}`);
+		})
+	);
+
+	context.subscriptions.push(
 		vscode.commands.registerCommand('data-massage.edit_with_llm', async(hint) => {
 			if (hint === undefined) {
 				hint = await vscode.window.showInputBox({
@@ -258,6 +267,10 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 				case 'delete_duplicates':
 					await vscode.commands.executeCommand('data-massage.remove_duplicate');
 					return;
+				case 'remove_dodgy':
+					await vscode.commands.executeCommand('data-massage.remove-dodgy');
+					return;
+	
 			}
 		});
 		webviewView.webview.html = `<!DOCTYPE html>
@@ -377,6 +390,9 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 				});
 				document.getElementById('delete_duplicates').addEventListener('click', () => {
 					vscode.postMessage({ command: 'delete_duplicates' });
+				});
+				document.getElementById('delete_dodgy').addEventListener('click', () => {
+					vscode.postMessage({ command: 'remove_dodgy' });
 				});
 				document.getElementById('edit_dodgy').addEventListener('click', () => {
 					vscode.postMessage({ command: 'edit-dodgy', hint: document.getElementById('edit_hint').value });

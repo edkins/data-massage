@@ -109,6 +109,14 @@ def main():
         with open(args.file, 'w') as f:
             f.write(delete)
         print(json.dumps({'rows_deleted': str(len(df) - len(pd.read_csv(io.StringIO(delete))))}))
+    elif args.command == 'remove_dodgy':
+        from edit import remove_dodgy
+        with open(args.file, 'r') as f:
+            inp = f.read()
+        outp, num_removed = remove_dodgy(inp)
+        with open(args.file, 'w') as f:
+            f.write(outp)
+        print(json.dumps({'num_removed': num_removed}))
     else:
         raise ValueError(f"Unknown command: {args.command}")
 

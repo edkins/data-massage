@@ -125,7 +125,11 @@ def find_dodgy_rows(df: pd.DataFrame) -> pd.Series:
     Args:
         df (DataFrame): A DataFrame with dodgy data.
     """
-    if 'human' in df.columns:
+    if 'human' in df.columns and 'model_eval' in df.columns:
+        return (df['human'] == 'incorrect') | (df['model_result'] == 'incorrect')
+    elif 'human' in df.columns:
         return df['human'] == 'incorrect'
+    elif 'model_result' in df.columns:
+        return df['model_result'] == 'incorrect'
     else:
-        raise ValueError("No 'human' column found in the DataFrame.")
+        raise ValueError("The DataFrame does not contain a 'human'or 'model_eval' column.")

@@ -88,13 +88,13 @@ class RAGCheck:
                 
                 concat = model_result + rag_result
                 if concat == '00':
-                    result_row['model_result'] = 0
+                    result_row['model_result'] = 'incorrect'
                 elif concat == '01':
-                    result_row['model_result'] = 1
+                    result_row['model_result'] = 'possibly incorrect'
                 elif concat == '10':
-                    result_row['model_result'] = 1
+                    result_row['model_result'] = 'possibly incorrect'
                 else:
-                    result_row['model_result'] = 2
+                    result_row['model_result'] = 'correct'
                     
                 results.append(result_row)
 
