@@ -3,11 +3,6 @@
 import { execFile } from 'child_process';
 import * as vscode from 'vscode';
 
-let human_eval_row:string|undefined = undefined;
-let human_eval_question:string|undefined = undefined;
-let human_eval_answer:string|undefined = undefined;
-let human_eval_column:string = 'human';
-
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -16,8 +11,9 @@ export function activate(context: vscode.ExtensionContext) {
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "data-massage" is now active!');
 
+	const viewProvider = new DataMassageViewProvider(context.extensionUri);
 	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider('data-massage', new DataMassageViewProvider(context.extensionUri))
+		vscode.window.registerWebviewViewProvider('data-massage', viewProvider)
 	);
 
 	async function invokePython(args: string[], stdin: string, on_stdout: (data: string) => void): Promise<number> {
@@ -144,7 +140,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand('data-massage.human-eval', async(opinion?: string) => {
+		vscode.commands.registerCommand('data-massage.human-eval', async(opinion?: string, row?: number) => {
 			if (opinion === undefined) {
 				opinion = await vscode.window.showInputBox({
 					prompt: 'Enter your opinion (correct, wrong, unsure)'
@@ -161,17 +157,19 @@ export function activate(context: vscode.ExtensionContext) {
 					vscode.window.showErrorMessage(`File must be saved before human evaluation ${filenameUri}`);
 					return;
 				}
+				if (row === undefined) {
+					row = editor.selection.active.line + 1;
+				}
 				const filename = filenameUri.fsPath;
 				const payload = {
-					row: human_eval_row,
-					column: human_eval_column,
+					row,
+					column: 'human',
 					value: opinion,
 				};
 				const result = await collectPython(['human_eval', '--file', filename, '--payload', JSON.stringify(payload)], '');
 				const result_payload = JSON.parse(result);
-				human_eval_row = result_payload.row;
-				human_eval_question = result_payload.question;
-				human_eval_answer = result_payload.answer;
+				editor.selection = new vscode.Selection(result_payload.row - 1, 0, result_payload.row - 1, 0);
+				return result_payload;
 			}
 		})
 	);
@@ -189,6 +187,47 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		})
 	);
+
+	context.subscriptions.push(vscode.window.onDidChangeTextEditorSelection(event => {
+        if (event.textEditor === vscode.window.activeTextEditor) {
+            const line = event.selections[0].active.line + 1;
+			let question = '';
+			let answer = '';
+			const firstLineText = event.textEditor.document.lineAt(0).text;
+			const fields = splitCsvLine(firstLineText);
+			const lineText = event.textEditor.document.lineAt(line - 1).text;
+			const lineFields = splitCsvLine(lineText);
+			for (let i = 0; i < fields.length; i++) {
+				const field = fields[i];
+				if (field === 'question') {
+					question = lineFields[i];
+				}
+				if (field === 'answer') {
+					answer = lineFields[i];
+				}
+			}
+            viewProvider.updateCurrentLine(line, question, answer);
+        }
+    }));
+}
+
+function splitCsvLine(line: string): string[] {
+	const fields = [];
+	let field = '';
+	let inQuotes = false;
+	for (let i = 0; i < line.length; i++) {
+		const c = line[i];
+		if (c === ',' && !inQuotes) {
+			fields.push(field);
+			field = '';
+		} else if (c === '"') {
+			inQuotes = !inQuotes;
+		} else {
+			field += c;
+		}
+	}
+	fields.push(field);
+	return fields;
 }
 
 class Streamer {
@@ -244,7 +283,18 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 	constructor(private readonly _extensionUri: vscode.Uri) {
 		this._extensionUri = _extensionUri;
 	}
+	updateCurrentLine(line: number, question: string, answer: string) {
+		if (this._view) {
+			this._view.webview.postMessage({
+				command: 'human-eval',
+				row: line,
+				question: question,
+				answer: answer,
+			});
+		}
+	}
 	resolveWebviewView(webviewView: vscode.WebviewView, context: vscode.WebviewViewResolveContext, token: vscode.CancellationToken): Thenable<void> | void {
+		this._view = webviewView;
 		webviewView.webview.options = {
 			enableScripts: true,
 			localResourceRoots: [vscode.Uri.joinPath(this._extensionUri, 'media')]
@@ -261,8 +311,7 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 					await vscode.commands.executeCommand('data-massage.edit_with_llm', message.hint);
 					return;
 				case 'human-eval':
-					await vscode.commands.executeCommand('data-massage.human-eval', message.opinion, message.row ?? human_eval_row);
-					webviewView.webview.postMessage({ command: 'human-eval', row: human_eval_row, question: human_eval_question, answer: human_eval_answer });
+					await vscode.commands.executeCommand('data-massage.human-eval', message.opinion, message.row);
 					return;
 				case 'delete_duplicates':
 					await vscode.commands.executeCommand('data-massage.remove_duplicate');
