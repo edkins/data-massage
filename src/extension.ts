@@ -411,7 +411,7 @@ class DataMassageViewProvider implements vscode.WebviewViewProvider {
 			<div id="panel_left">
 				<div id="visit_grow_shrink" class="option active">Grow/shrink</div>
 				<div id="visit_edit" class="option">Edit</div>
-				<div id="visit_eval" class="option">Eval</div>
+				<div id="visit_eval" class="option" style="display:none">Eval</div>
 				<div id="visit_human_eval" class="option">Human Eval</div>
 			</div>
 			<div id="panel_main">
